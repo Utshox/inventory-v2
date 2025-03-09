@@ -73,7 +73,7 @@ def handle_query():
             # Add validation to break loops
             if "python_repl_ast" in response:
                 raise ValueError("Invalid tool reference in response")
-                
+
             # Convert potential results to session storage
             session['last_response'] = {
                 'text': response,
@@ -96,24 +96,11 @@ def handle_query():
 @app.route('/results')
 def show_results():
     response_data = session.get('last_response', {})
-    table_data = response_data.get('table')
+    table_data = response_data.get('table', [])  # Default to empty list
     
-    # Convert all values to strings for template safety
-    if table_data:
-        table_data = [
-            {k: str(v) if not isinstance(v, (int, float)) else v 
-             for k, v in item.items()}
-            for item in table_data
-        ]
-
     return render_template('results.html',
                          response_text=response_data.get('text'),
                          table_data=table_data)
-
-@app.route('/download/invoice')
-def download_invoice():
-    # Add your invoice generation logic here
-    return send_file('path/to/invoice.pdf', as_attachment=True)
 
 @app.route('/test_api')
 def test_api():
@@ -131,67 +118,99 @@ def test_api():
 @app.route('/generate_invoice', methods=['POST'])
 def generate_invoice():
     try:
-        product_id = request.form.get('product_id')
-        quantity = int(request.form.get('quantity'))
-        
-        # Get current data
-        current_file = session.get('current_file')
-        processor.load_data(current_file)
-        
-        # Find product in dataframe
-        product = processor.df[processor.df['Product ID'] == product_id].iloc[0].to_dict()
-        
-        # Add to invoice session
+        product_id = request.form['product_id']
+        product_name = request.form['product_name']
+        unit_price = float(request.form['unit_price'])
+        quantity = int(request.form['quantity'])
+
+        item = {
+            'product_id': product_id,
+            'product_name': product_name,
+            'unit_price': unit_price,
+            'quantity': quantity,
+            'total': unit_price * quantity
+        }
+
         if 'invoice_items' not in session:
             session['invoice_items'] = []
-            
-        session['invoice_items'].append({
-            'product_id': product_id,
-            'name': product['Product Name'],
-            'price': product['Unit Price'],
-            'quantity': quantity
-        })
         
-        flash('Item added to invoice!', 'success')
+        # Update quantity if product exists
+        existing = next((i for i in session['invoice_items'] if i['product_id'] == product_id), None)
+        if existing:
+            existing['quantity'] += quantity
+            existing['total'] += item['total']
+        else:
+            session['invoice_items'].append(item)
+        
+        session.modified = True
+        flash(f'{quantity} x {product_name} added to order!', 'success')
         return redirect(url_for('show_results'))
-    
+
     except Exception as e:
         flash(f'Error adding item: {str(e)}', 'error')
         return redirect(url_for('show_results'))
 
-    # Update download invoice route
-    def download_invoice():
-        try:
-            from fpdf import FPDF
-            import datetime
-            
-            # Create PDF
-            pdf = FPDF()
-            pdf.add_page()
-            
-            # Add invoice content
-            pdf.set_font('Arial', 'B', 16)
-            pdf.cell(0, 10, 'Commercial Door Solutions - Invoice', 0, 1, 'C')
-            
-            # Add items
-            pdf.set_font('Arial', '', 12)
-            if 'invoice_items' in session:
-                for item in session['invoice_items']:
-                    pdf.cell(0, 10, f"{item['name']} (Qty: {item['quantity']}) - ${item['price'] * item['quantity']:.2f}", 0, 1)
-            
-            # Add total
-            total = sum(item['price'] * item['quantity'] for item in session.get('invoice_items', []))
-            pdf.cell(0, 10, f"Total: ${total:.2f}", 0, 1)
-            
-            # Save and send
-            filename = f"invoice_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
-            pdf.output(filename)
-            
-            return send_file(filename, as_attachment=True)
-            
-        except Exception as e:
-            flash(f'Error generating invoice: {str(e)}', 'error')
-            return redirect(url_for('show_results'))
+@app.route('/download/invoice')
+def download_invoice():
+    try:
+        from fpdf import FPDF
+        from datetime import datetime
+        
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        
+        # Header
+        pdf.cell(0, 10, 'Commercial Door Solutions - Invoice', 0, 1, 'C')
+        pdf.ln(10)
+        
+        # Invoice Details
+        pdf.set_font('Arial', '', 12)
+        pdf.cell(0, 10, f'Invoice Date: {datetime.now().strftime("%Y-%m-%d %H:%M")}', 0, 1)
+        pdf.cell(0, 10, f'Invoice Number: INV-{datetime.now().strftime("%Y%m%d%H%M%S")}', 0, 1)
+        pdf.ln(15)
+        
+        # Items Table
+        pdf.set_font('Arial', 'B', 12)
+        col_widths = [30, 80, 25, 25, 30]
+        headers = ['ID', 'Product', 'Price', 'Qty', 'Total']
+        
+        # Table Header
+        for width, header in zip(col_widths, headers):
+            pdf.cell(width, 10, header, border=1)
+        pdf.ln()
+        
+        # Table Rows
+        pdf.set_font('Arial', '', 12)
+        grand_total = 0
+        for item in session.get('invoice_items', []):
+            pdf.cell(col_widths[0], 10, item['product_id'], border=1)
+            pdf.cell(col_widths[1], 10, item['product_name'], border=1)
+            pdf.cell(col_widths[2], 10, f"${item['unit_price']:.2f}", border=1)
+            pdf.cell(col_widths[3], 10, str(item['quantity']), border=1)
+            pdf.cell(col_widths[4], 10, f"${item['total']:.2f}", border=1)
+            pdf.ln()
+            grand_total += item['total']
+        
+        # Total Row
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(sum(col_widths[:4]), 10, 'Grand Total:', border=1, align='R')
+        pdf.cell(col_widths[4], 10, f"${grand_total:.2f}", border=1)
+        
+        # Save and send
+        filename = f"invoice_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        pdf.output(filename)
+        
+        return send_file(filename, as_attachment=True)
+        
+    except Exception as e:
+        flash(f'Error generating invoice: {str(e)}', 'error')
+        return redirect(url_for('show_results'))
+
+# @app.route('/download/invoice')
+# def download_invoice():
+#     # Add your invoice generation logic here
+#     return send_file('path/to/invoice.pdf', as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True)

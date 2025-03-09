@@ -1,0 +1,34 @@
+/* Custom Table Styling */
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.table-dark {
+    background: #2c3e50 !important;
+}
+
+/* Card Shadows */
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+/* Price Highlighting */
+.text-success {
+    font-weight: 600;
+    color: #28a745 !important;
+}
+
+/* Floating Cart Button */
+.btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.25rem;
+    border-radius: 50px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.btn-lg:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}

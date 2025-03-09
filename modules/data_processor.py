@@ -28,7 +28,23 @@ class DataProcessor:
         return self.df.columns.tolist() if self.df is not None else []
     
     def get_sample_data(self, n=5):
-        return self.df.head(n).to_dict('records') if self.df is not None else []
+        """Safe sample data retrieval"""
+        try:
+            if self.df is None or self.df.empty:
+                return []
+                
+            sample = self.df.head(n).copy()
+            
+            # Clean numeric fields
+            numeric_cols = sample.select_dtypes(include=[np.number]).columns
+            for col in numeric_cols:
+                sample[col] = sample[col].apply(lambda x: f"{x:.2f}" if pd.notnull(x) else "")
+                
+            return sample.to_dict('records')
+            
+        except Exception as e:
+            print(f"Sample data error: {str(e)}")
+            return []
     
     def is_loaded(self):
         return self.df is not None

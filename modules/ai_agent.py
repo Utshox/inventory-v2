@@ -93,95 +93,130 @@ class AIAgent:
         return query
 
     def extract_table(self, response):
-        """Extract structured data from AI response with multiple fallback methods"""
-        """Add pandas import to generated code"""
-        if response is None:
-            return None
-            
-        modified_response = re.sub(
-            r'(```python\s*)', 
-            r'\1import pandas as pd\n',
-            response
-        )
+        """Extract structured data from AI response with enhanced validation"""
         result_df = None
         
-        # Check for code blocks first
-        if "```" in response:
-            code_blocks = re.findall(r'```(.*?)```', response, re.DOTALL)
-            for block in code_blocks:
-                try:
-                    # Handle markdown tables
-                    if any('|' in line for line in block.split('\n')):
-                        lines = [line.strip() for line in block.split('\n') if line.strip()]
-                        headers = [h.strip() for h in lines[0].split('|') if h.strip()]
-                        data = []
-                        for line in lines[2:]:  # Skip header and separator
-                            if '|' in line:
-                                cells = [c.strip() for c in line.split('|') if c.strip()]
-                                if len(cells) == len(headers):
-                                    data.append(cells)
-                        if headers and data:
-                            result_df = pd.DataFrame(data, columns=headers)
-                            break
-                    # Handle CSV data
-                    else:
-                        result_df = pd.read_csv(io.StringIO(block))
-                        break
-                except:
-                    continue
+        try:
+            if not response:
+                return []
 
-        # Check for inline markdown tables if no code blocks found
-        if result_df is None:
-            table_match = re.search(r'(\|.*\|\n\|[-| ]+\|\n(\|.*\|\n)+)', response)
-            if table_match:
-                table_text = table_match.group(0)
-                lines = [line.strip() for line in table_text.split('\n') if line.strip()]
-                headers = [h.strip() for h in lines[0].split('|') if h.strip()]
-                data = []
-                for line in lines[2:]:
-                    cells = [c.strip() for c in line.split('|') if c.strip()]
-                    if len(cells) == len(headers):
-                        data.append(cells)
-                if headers and data:
-                    result_df = pd.DataFrame(data, columns=headers)
+            # Preprocess response
+            modified_response = re.sub(
+                r'(```python\s*)', 
+                r'\1import pandas as pd\n',
+                response,
+                flags=re.IGNORECASE
+            )
 
-        # Fallback for numbered lists
-        if result_df is None and "1." in response and "Price" in response:
+            # Try extracting from code blocks first
+            if "```" in modified_response:
+                result_df = self._extract_from_code_blocks(modified_response)
+
+            # Fallback to inline tables
+            if result_df is None:
+                result_df = self._extract_inline_tables(modified_response)
+
+            # Final fallback to numbered lists
+            if result_df is None:
+                result_df = self._extract_from_numbered_lists(modified_response)
+
+            # Post-process the dataframe
+            if result_df is not None and not result_df.empty:
+                result_df = self._clean_dataframe(result_df)
+                return result_df.to_dict('records')
+
+            return []
+
+        except Exception as e:
+            print(f"Table extraction error: {str(e)}")
+            return []
+
+    # Helper methods
+    def _extract_from_code_blocks(self, response):
+        """Extract tables from markdown/code blocks"""
+        code_blocks = re.findall(r'```(?:python)?\n?(.*?)```', response, re.DOTALL)
+        
+        for block in code_blocks:
             try:
-                items = []
-                pattern = r"\d+\.\s+(.*?)\s+-\s+\$(\d+\.\d{2})"
-                matches = re.findall(pattern, response)
-                for name, price in matches:
-                    items.append({
-                        "Product Name": name.strip(),
-                        "Unit Price": float(price)
-                    })
-                if items:
-                    result_df = pd.DataFrame(items).head(10)
+                # Handle markdown tables
+                if any('|' in line for line in block.split('\n')):
+                    return pd.read_csv(io.StringIO(block), sep='|', skipinitialspace=True).dropna(axis=1, how='all')
+                
+                # Handle CSV-like data
+                return pd.read_csv(io.StringIO(block))
+                
+            except Exception as e:
+                continue
+                
+        return None
+
+    def _extract_inline_tables(self, response):
+        """Extract inline markdown tables"""
+        table_match = re.search(r'(\|.*\|[\r\n]+\|[-| ]+[\r\n]+(\|.*\|[\r\n]*)+)', response)
+        if table_match:
+            try:
+                return pd.read_csv(io.StringIO(table_match.group(0)), sep='|', skipinitialspace=True).dropna(axis=1, how='all')
             except:
-                pass
+                return None
+        return None
 
-        # Clean numeric columns if dataframe exists
-        if result_df is not None and not result_df.empty:
-            for col in result_df.select_dtypes(include=['object']):
-                if any(keyword in col.lower() for keyword in ['price', 'cost', 'total']):
-                    result_df[col] = result_df[col].replace('[^\d.]', '', regex=True).astype(float)
+    def _extract_inline_tables(self, response):
+        """Improved markdown table parsing"""
+        try:
+            # Find all potential tables
+            tables = re.findall(
+                r'(\|.*\|[\n\r]+)\|?[-: \|]+\|?[\n\r]+((?:\|.*\|[\n\r]?)+)',
+                response
+            )
+            
+            best_table = None
+            max_rows = 0
+            
+            for header, body in tables:
+                # Process header
+                headers = [h.strip() for h in header.split('|') if h.strip()]
+                
+                # Process body rows
+                rows = []
+                for line in body.split('\n'):
+                    line = line.strip()
+                    if line.startswith('|'):
+                        cells = [c.strip() for c in line.split('|') if c.strip()]
+                        if len(cells) == len(headers):
+                            rows.append(cells)
+                
+                # Validate table
+                if len(headers) > 1 and len(rows) > 0:
+                    if len(rows) > max_rows:
+                        best_table = (headers, rows)
+                        max_rows = len(rows)
+            
+            if best_table:
+                headers, rows = best_table
+                return pd.DataFrame(rows, columns=headers)
+                
+        except Exception as e:
+            print(f"Table extraction error: {str(e)}")
         
-        return result_df
+        return None
 
-        # After getting result_df, add type conversion
-        if result_df is not None:
-            # Convert numeric columns
-            for col in result_df.columns:
-                if any(kw in col.lower() for kw in ['price', 'cost', 'total']):
-                    # Remove non-numeric characters and convert to float
-                    result_df[col] = result_df[col].replace('[^\d.]', '', regex=True)
-                    result_df[col] = pd.to_numeric(result_df[col], errors='coerce')
-                    
-            # Convert to records
-            table_data = result_df.to_dict('records')
+    def _clean_dataframe(self, df):
+        """Enhanced data cleaning"""
+        # Clean column names
+        df.columns = df.columns.str.strip().str.title()
         
-        return table_data
+        # Convert numeric columns
+        numeric_cols = ['Unit Price', 'Price', 'Cost', 'Total']
+        for col in df.columns:
+            if any(kw in col.lower() for kw in ['price', 'cost', 'total']):
+                df[col] = df[col].replace('[^\d.]', '', regex=True)
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # Clean warranty information
+        if 'Warranty Information' in df.columns:
+            df['Warranty Information'] = df['Warranty Information'].str.replace(' years', '').str.replace(' year', '').astype(float)
+        
+        return df.dropna(how='all')
 
 
     def validate_response(self, result_df):
