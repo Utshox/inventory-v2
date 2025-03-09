@@ -25,32 +25,27 @@ class AIAgent:
     def create_agent(self):
         from langchain.prompts import PromptTemplate
         
-        # Define static instructions
-        static_instructions = """
-        Strict Instructions:
-        1. ALWAYS start Python code with `import pandas as pd`
-        2. Use DataFrame variable `df`
-        3. Format currency as $X,XXX.XX
-        4. Keep Product ID, Name, Material, Price
-        """
-        
-        # Define full prompt template
-        full_template = f"""You are a data analysis assistant working with commercial door product data.
+        # Define the custom prefix directly in the method
+        custom_prefix = f"""
+        You are a data analysis assistant working with commercial door product data.
         The dataset contains these columns: {{columns}}.
-        
-        {static_instructions}
-        
-        Analyze this query: {{input}}
-        
-        Provide your response in this format:
-        1. Thought process summary (2-3 sentences)
-        2. Code execution (hidden)
-        3. Final table (markdown format)"""
 
-        prompt = PromptTemplate(
-            template=full_template,
-            input_variables=["input", "columns"]
-        )
+        **Strict Instructions:**
+        1. ALWAYS use the existing DataFrame `df` (already loaded)
+        2. Never generate new sample data - use only the provided data
+        3. Format results as markdown tables
+        4. Never mention tool names or execution methods
+        5. For random sampling, use: df.sample(n=4)
+
+        Example Response Format:
+        Here are 4 random products from the dataset:
+
+        | Product ID | Product Name       | Unit Price |
+        |------------|--------------------|------------|
+        | PD-1001    | Steel Security Door| $1,200.00  |
+        | PD-1023    | Glass Store Front  | $2,850.00  |
+        ... (2 more rows)
+        """
 
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash",
@@ -61,11 +56,11 @@ class AIAgent:
             llm,
             self.df,
             verbose=True,
-            prompt=prompt,
-            input_variables=["input", "columns"],
-            include_df_in_prompt=False
+            prefix=custom_prefix,
+            input_variables=["columns"],
+            include_df_in_prompt=False,
+            agent_executor_kwargs={"handle_parsing_errors": True}
         )
-        
     def process_query(self, query):
         """Process natural language query with enhanced handling"""
         try:
