@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h3 class="m-0"><i class="fas fa-door-open me-2"></i>Door Inventory Management System</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h4>Welcome to the Door Inventory Management System</h4>
+                    <p>This application helps you manage commercial door products with AI-powered search and analysis capabilities.</p>
+                </div>
+
+                <h5 class="mb-3">Get Started</h5>
+                <form method="POST" action="{{ url_for('initialize') }}" enctype="multipart/form-data" class="mb-3">
+                    <div class="mb-3">
+                        <label for="api_key" class="form-label">Google API Key</label>
+                        <input type="password" class="form-control" id="api_key" name="api_key" required>
+                        <div class="form-text">Enter your Google Gemini API key for AI search capabilities.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="csv_file" class="form-label">Upload Inventory CSV</label>
+                        <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                        <div class="form-text">Upload your commercial door products CSV file.</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-play me-2"></i>Initialize System
+                    </button>
+                </form>
+
+                <div class="alert alert-info">
+                    <h5><i class="fas fa-info-circle me-2"></i>System Features:</h5>
+                    <ul>
+                        <li>Natural language search of inventory data</li>
+                        <li>Generate professional invoices</li>
+                        <li>Visualization of search results</li>
+                        <li>AI-powered data analysis</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

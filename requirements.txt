@@ -1,0 +1,17 @@
+# Dev environment
+pip
+autopep8
+
+# App
+flask
+
+#others
+flask==2.3.3
+pandas==2.0.3
+matplotlib==3.7.2
+fpdf==1.7.2
+langchain_google_genai==0.0.5
+langchain_experimental
+google-generativeai==0.3.1
+python-dotenv==1.0.0
+Werkzeug==2.3.7

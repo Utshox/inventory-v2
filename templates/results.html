@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Query Results</h2>
+    
+    <!-- Analysis Section -->
+    {% if response_text %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Analysis Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">{{ response_text }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Data Results Section -->
+    {% if table_data and table_data|length > 0 %}
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white d-flex justify-content-between">
+            <h5 class="mb-0">Structured Results</h5>
+            <a href="{{ url_for('download_invoice') }}" class="btn btn-light btn-sm">
+                <i class="fas fa-file-invoice"></i> Generate Invoice
+            </a>
+        </div>
+        
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="thead-dark">
+                        <tr>
+                            {% for header in table_data[0].keys() %}
+                            <th>{{ header }}</th>
+                            {% endfor %}
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in table_data %}
+                        <tr>
+                            {% for key, value in row.items() %}
+                            <td>
+                                {% if value is string and value.startswith('http') %}
+                                    <a href="{{ value }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                {% elif key|lower in ['price', 'cost', 'total'] %}
+                                    <span class="text-success">${{ "%.2f"|format(value|float) }}</span>
+                                {% elif key|lower in ['quantity'] %}
+                                    <span class="badge bg-primary">{{ value }}</span>
+                                {% else %}
+                                    {{ value }}
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td>
+                                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
+                                        data-bs-target="#invoiceModal" data-product-id="{{ row['Product ID'] }}">
+                                    <i class="fas fa-cart-plus"></i> Add to Invoice
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Invoice Generation Modal -->
+    <div class="modal fade" id="invoiceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add to Invoice</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="invoiceForm" method="POST" action="{{ url_for('generate_invoice') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Product ID</label>
+                            <input type="text" class="form-control" name="product_id" id="modalProductId" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control" name="quantity" min="1" value="1" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add to Cart</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Query
+        </a>
+    </div>
+</div>
+
+<script>
+// Modal handling script
+document.getElementById('invoiceModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const productId = button.getAttribute('data-product-id');
+    document.getElementById('modalProductId').value = productId;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h3 class="m-0"><i class="fas fa-search me-2"></i>Natural Language Search</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('results') }}">
+                    <div class="mb-3">
+                        <label for="query" class="form-label">Search Query</label>
+                        <input type="text" class="form-control form-control-lg" id="query" name="query" 
+                               placeholder="Enter your natural language search query..." required>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-search me-2"></i>Search
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mt-4">
+                    <h5>Example Queries:</h5>
+                    <div class="list-group">
+                        <button type="button" class="list-group-item list-group-item-action example-query">
+                            Show fire doors under $2000 with 5-year warranty
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action example-query">
+                            List aluminum products in stock
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action example-query">
+                            Find 10 most expensive items in Hardware category
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action example-query">
+                            Compare products by warranty period
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const exampleQueries = document.querySelectorAll('.example-query');
+        const queryInput = document.getElementById('query');
+        
+        exampleQueries.forEach(button => {
+            button.addEventListener('click', function() {
+                queryInput.value = this.textContent.trim();
+                queryInput.focus();
+            });
+        });
+    });
+</script>
+{% endblock %}
