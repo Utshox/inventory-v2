@@ -82,6 +82,89 @@
     </div>
     {% endif %}
 
-    <!-- Invoice Modal (keep existing implementation) -->
+    <!-- Invoice Modal -->
+    <div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title" id="invoiceModalLabel">Add to Invoice</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('generate_invoice') }}" method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" id="product_id" name="product_id">
+                        <input type="hidden" id="product_name" name="product_name">
+                        <input type="hidden" id="unit_price" name="unit_price">
+                        
+                        <div class="mb-3">
+                            <label for="selected_product" class="form-label">Selected Product:</label>
+                            <input type="text" class="form-control" id="selected_product" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="price_display" class="form-label">Unit Price:</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="text" class="form-control" id="price_display" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">Quantity:</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" value="1" min="1" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="total" class="form-label">Total:</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="text" class="form-control" id="total" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">Add to Invoice</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Add JavaScript to handle modal functionality -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const invoiceModal = document.getElementById('invoiceModal');
+    if (invoiceModal) {
+        invoiceModal.addEventListener('show.bs.modal', function (event) {
+            // Button that triggered the modal
+            const button = event.relatedTarget;
+            
+            // Extract info from data attributes
+            const productId = button.getAttribute('data-product-id');
+            const productName = button.getAttribute('data-product-name');
+            const unitPrice = parseFloat(button.getAttribute('data-unit-price'));
+            
+            // Update modal content
+            const modal = this;
+            modal.querySelector('#product_id').value = productId;
+            modal.querySelector('#product_name').value = productName;
+            modal.querySelector('#unit_price').value = unitPrice;
+            modal.querySelector('#selected_product').value = `${productId} - ${productName}`;
+            modal.querySelector('#price_display').value = unitPrice.toFixed(2);
+            
+            // Set initial total
+            const quantity = parseInt(modal.querySelector('#quantity').value);
+            modal.querySelector('#total').value = (unitPrice * quantity).toFixed(2);
+            
+            // Update total when quantity changes
+            modal.querySelector('#quantity').addEventListener('input', function() {
+                const qty = parseInt(this.value) || 0;
+                modal.querySelector('#total').value = (unitPrice * qty).toFixed(2);
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

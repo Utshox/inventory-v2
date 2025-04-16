@@ -24,6 +24,14 @@
                 <li class="nav-item">
                     <a class="nav-link" href="#upload-section">Upload</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('view_cart') }}">
+                        <i class="fas fa-shopping-cart"></i> Cart
+                        {% if session.invoice_items %}
+                        <span class="badge bg-danger">{{ session.invoice_items|length }}</span>
+                        {% endif %}
+                    </a>
+                </li>
             </ul>
             
             {% if current_file %}

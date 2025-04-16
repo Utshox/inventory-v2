@@ -1,17 +1,20 @@
-# Dev environment
-pip
-autopep8
-
-# App
-flask
-
-#others
+# Flask web framework and related packages
 flask==2.3.3
-pandas==2.0.3
-matplotlib==3.7.2
-fpdf==1.7.2
-langchain_google_genai==0.0.5
-langchain_experimental
-google-generativeai==0.3.1
-python-dotenv==1.0.0
 Werkzeug==2.3.7
+python-dotenv==1.0.0
+
+# Data processing and visualization
+pandas==2.0.3
+numpy==1.24.3
+matplotlib==3.7.2
+
+# PDF generation
+fpdf==1.7.2
+
+# AI and LLM integration
+google-generativeai==0.3.1
+langchain_google_genai==0.0.5
+langchain_experimental==0.0.24
+
+# Development tools
+autopep8==2.0.2

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h3 class="m-0"><i class="fas fa-shopping-cart me-2"></i>Shopping Cart</h3>
+            </div>
+            <div class="card-body">
+                {% if invoice_items %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Product</th>
+                                <th>Price</th>
+                                <th>Quantity</th>
+                                <th>Total</th>
+                                <th>Details</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in invoice_items %}
+                            <tr>
+                                <td>{{ item.product_id }}</td>
+                                <td>{{ item.product_name }}</td>
+                                <td>${{ "%.2f"|format(item.unit_price|float) }}</td>
+                                <td>
+                                    <form action="{{ url_for('update_quantity') }}" method="POST" class="d-flex align-items-center">
+                                        <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                                        <input type="number" name="quantity" class="form-control form-control-sm" value="{{ item.quantity }}" min="1" style="width: 70px;">
+                                        <button type="submit" class="btn btn-sm btn-primary ms-2">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td>${{ "%.2f"|format(item.total|float) }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" type="button" 
+                                            data-bs-toggle="collapse" 
+                                            data-bs-target="#details-{{ item.product_id }}" 
+                                            aria-expanded="false">
+                                        <i class="fas fa-info-circle"></i> Details
+                                    </button>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('remove_item', product_id=item.product_id) }}" class="btn btn-sm btn-danger">
+                                        Remove
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr class="collapse" id="details-{{ item.product_id }}">
+                                <td colspan="7">
+                                    <div class="card card-body bg-light">
+                                        <div class="row">
+                                            {% if item.dimensions %}
+                                            <div class="col-md-4">
+                                                <strong>Dimensions:</strong> {{ item.dimensions }}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if item.manufacturer %}
+                                            <div class="col-md-4">
+                                                <strong>Manufacturer:</strong> {{ item.manufacturer }}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if item.material %}
+                                            <div class="col-md-4">
+                                                <strong>Material:</strong> {{ item.material }}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if item.category %}
+                                            <div class="col-md-4">
+                                                <strong>Category:</strong> {{ item.category }}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if item.subcategory %}
+                                            <div class="col-md-4">
+                                                <strong>Subcategory:</strong> {{ item.subcategory }}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if item.warranty %}
+                                            <div class="col-md-4">
+                                                <strong>Warranty:</strong> {{ item.warranty }} years
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end fw-bold">Grand Total:</td>
+                                <td>${{ "%.2f"|format(grand_total|float) }}</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-3">
+                    <a href="{{ url_for('clear_cart') }}" class="btn btn-warning">
+                        <i class="fas fa-trash me-2"></i>Clear Cart
+                    </a>
+                    <a href="{{ url_for('customer_details') }}" class="btn btn-success">
+                        <i class="fas fa-file-invoice me-2"></i>Proceed to Checkout
+                    </a>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <p>Your cart is empty. Return to the <a href="{{ url_for('show_results') }}">results</a> to add items.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
