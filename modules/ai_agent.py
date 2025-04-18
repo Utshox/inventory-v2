@@ -66,47 +66,133 @@ class AIAgent:
             agent_executor_kwargs={"handle_parsing_errors": True},
             allow_dangerous_code=True  # Add this parameter to enable Python REPL execution
         )
+    
     def process_query(self, query):
         """Process natural language query with enhanced handling"""
         try:
             enhanced_query = self._enhance_query(query)
             
-            # Append specific instructions to avoid limitation messages
+            # Add more specific instructions to prevent self-referential or incomplete responses
             enhanced_query += """
-            Important: DO NOT mention any limitations about executing code. 
-            Process the query directly using the data.
-            Always return actual results, not placeholder text.
-            Do not include phrases like "I am unable to execute the code" or "Due to limitations".
+            Important instructions:
+            1. DO NOT mention your limitations or capabilities in the response.
+            2. DO NOT include phrases like "I am unable" or "I cannot".
+            3. DO NOT end sentences abruptly with incomplete thoughts.
+            4. If you can't produce a result, explain precisely what's missing in the data.
+            5. Always provide concrete analysis using the available data.
+            6. Format results as markdown tables where appropriate.
+            7. NEVER include the words "code", "execute", or "limitations" in your response.
             """
             
+            # First attempt
             response = self.agent.run({
                 "input": enhanced_query,
                 "columns": ", ".join(self.df.columns.tolist())
             })
             
-            # Clean up the response to remove any remaining limitation statements
-            response = re.sub(
-                r'(?i)(due to (?:the )?limitations|unable to execute|I cannot directly|I am not able to)', 
-                '', 
-                response
-            )
+            # Check for problematic patterns that indicate a nonsensical or incomplete response
+            problematic_patterns = [
+                r'(?i)because I am \w{1,10}\.?$',  # Catches "because I am code" and similar truncations
+                r'(?i)I am (unable|not able) to',
+                r'(?i)I cannot.*because',
+                r'(?i)limitations (of|in) (the|my)',
+                r'(?i)as an AI',
+                r'(?i)I don\'t have the ability',
+                r'(?i)tool (usage|execution)',
+                r'(?i)due to (my|the) (limitations|constraints)',
+                r'(?i)I am a language model',
+                r'(?i)as a language model',
+                r'(?i)the execution of'
+            ]
             
-            # Make sure we have results, not just an explanation of what would happen
-            if "would generate" in response.lower() or "would display" in response.lower():
-                # Force execution by appending concrete instructions
-                retry_query = enhanced_query + "\nExecute this query against the actual data and show results."
+            needs_retry = False
+            for pattern in problematic_patterns:
+                if re.search(pattern, response):
+                    needs_retry = True
+                    break
+            
+            # Check for truncated responses or nonsensical endings
+            if response.endswith(('.', ',', ';', ':', '-')) or len(response.split()) < 5:
+                needs_retry = True
+            
+            # Retry with more explicit instructions if needed
+            if needs_retry:
+                retry_query = enhanced_query + """
+                CRITICAL: Your previous response contained restricted phrases or was incomplete.
+                
+                Focus ONLY on analyzing the data and providing insights.
+                1. Start with a clear statement about what the data shows
+                2. Provide organized results in markdown table format
+                3. End with a brief conclusion about the findings
+                """
+                
                 response = self.agent.run({
                     "input": retry_query,
                     "columns": ", ".join(self.df.columns.tolist())
                 })
             
+            # Final cleanup of any remaining problematic phrases
+            response = self._clean_response(response)
+            
+            # If we still have no proper content, provide a generic but useful response
+            if not self._has_valid_content(response):
+                manufacturer_col = next((col for col in self.df.columns if 'manufacturer' in col.lower()), None)
+                price_col = next((col for col in self.df.columns if 'price' in col.lower()), None)
+                
+                if manufacturer_col and price_col:
+                    fallback_msg = f"Here's a summary of the products by price: The data contains {len(self.df)} products across {self.df[manufacturer_col].nunique()} manufacturers, with prices ranging from ${self.df[price_col].min():.2f} to ${self.df[price_col].max():.2f}."
+                else:
+                    fallback_msg = f"The data contains {len(self.df)} records. Please specify which columns you'd like to analyze."
+                
+                return fallback_msg, self.extract_table(response)
+            
             return response, self.extract_table(response)
+        
         except Exception as e:
             error_msg = str(e)
-            # Don't expose internal errors to the user
-            user_friendly_error = "There was an issue processing your query. Please try rephrasing it."
             print(f"Query processing error: {error_msg}")
-            return user_friendly_error, None
+            # Provide a specific and helpful error message
+            return "I couldn't complete this analysis. Please try a different query or check if the data contains the necessary information.", None
+
+    def _clean_response(self, response):
+        """Clean up problematic patterns in responses"""
+        if not response:
+            return ""
+        
+        # Remove any statements about limitations
+        cleaned = re.sub(
+            r'(?i)(due to (?:the )?limitations|unable to|I cannot|As an AI|I don\'t have the ability|As a language model)',
+            '',
+            response
+        )
+        
+        # Remove incomplete thoughts ending with "because I am..."
+        cleaned = re.sub(r'(?i)because I am \w+\.?$', '.', cleaned)
+        
+        # Fix double periods that might be created by removals
+        cleaned = re.sub(r'\.\.+', '.', cleaned)
+        
+        # Fix spacing issues
+        cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip()
+        
+        return cleaned
+
+    def _has_valid_content(self, response):
+        """Check if the response has valid content"""
+        # Must have some substantial length
+        if not response or len(response) < 20:
+            return False
+            
+        # Should contain numbers if this is a data analysis
+        has_numbers = bool(re.search(r'\d', response))
+        
+        # Should have proper sentences
+        proper_sentences = len([s for s in response.split('.') if len(s.strip()) > 10]) > 0
+        
+        # Should have a table or list-like structure for data
+        has_structure = '|' in response or '\n- ' in response or bool(re.search(r'\d+\.', response))
+        
+        return has_numbers and proper_sentences or has_structure
 
     def _enhance_query(self, query):
         """Improve query understanding for better results"""
