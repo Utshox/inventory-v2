@@ -9,6 +9,9 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 from datetime import datetime
 import io
 from fpdf import FPDF
+from flask import session
+from typing import Dict, List, Optional, Any
+import json
 
 class InventoryManagementSystem:
     def __init__(self, file_path):
@@ -47,8 +50,9 @@ class InventoryManagementSystem:
             1. ALWAYS use the existing DataFrame `df` (already loaded)
             2. Never generate new sample data - use only the provided data
             3. Format results as markdown tables
-            4. Never mention tool names or execution methods
-            5. For random sampling, use: df.sample(n=4)
+            4. **CRITICAL: ALWAYS include a product identifier column (e.g., 'Product ID', 'ID', 'SKU') in your table output.**
+            5. Never mention tool names or execution methods
+            6. For random sampling, use: df.sample(n=4)
 
             Example Response Format:
             Here are 4 random products from the dataset:
@@ -303,3 +307,142 @@ class InventoryManagementSystem:
         except Exception as e:
             print(f"❌ Error generating invoice: {e}")
             return None
+
+class Cart:
+    """
+    Cart class to handle shopping cart operations with proper validation and session management
+    """
+    CART_SESSION_KEY = 'invoice_items'
+    
+    @staticmethod
+    def get_cart() -> List[Dict[str, Any]]:
+        """Get current cart from session with validation"""
+        if Cart.CART_SESSION_KEY not in session:
+            session[Cart.CART_SESSION_KEY] = []
+            session.modified = True
+        return session[Cart.CART_SESSION_KEY]
+    
+    @staticmethod
+    def add_item(product_data: Dict[str, Any]) -> bool:
+        """
+        Add an item to the cart with validation
+        
+        Args:
+            product_data: Dictionary containing product details
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Validate required fields
+            required_fields = ['product_id', 'product_name', 'unit_price', 'quantity']
+            if not all(field in product_data for field in required_fields):
+                return False
+                
+            # Normalize and validate product data
+            product_id = str(product_data['product_id'])
+            product_name = str(product_data['product_name'])
+            
+            # Handle unit price with validation
+            try:
+                unit_price_raw = product_data['unit_price']
+                unit_price = 0.0
+                
+                if isinstance(unit_price_raw, (int, float)):
+                    unit_price = float(unit_price_raw)
+                elif isinstance(unit_price_raw, str) and unit_price_raw.strip() and unit_price_raw.lower() not in ['nan', 'none', 'undefined', 'null', 'n/a']:
+                    unit_price = float(unit_price_raw)
+                    
+                # Ensure price is valid
+                if pd.isna(unit_price) or not pd.np.isfinite(unit_price) or unit_price < 0:
+                    unit_price = 0.0
+            except (ValueError, TypeError):
+                unit_price = 0.0
+                
+            # Handle quantity with validation
+            try:
+                quantity_raw = product_data['quantity']
+                quantity = 1
+                
+                if isinstance(quantity_raw, (int, float)):
+                    quantity = int(quantity_raw)
+                elif isinstance(quantity_raw, str) and quantity_raw.strip():
+                    quantity = int(quantity_raw)
+                    
+                # Ensure quantity is valid
+                if quantity <= 0:
+                    quantity = 1
+            except (ValueError, TypeError):
+                quantity = 1
+                
+            # Create validated item with total calculation
+            validated_item = {
+                'product_id': product_id,
+                'product_name': product_name,
+                'unit_price': unit_price,
+                'quantity': quantity,
+                'total': unit_price * quantity
+            }
+            
+            # Add any additional details if they exist
+            additional_fields = ['dimensions', 'manufacturer', 'material', 'category', 
+                               'subcategory', 'warranty']
+            for field in additional_fields:
+                if field in product_data and product_data[field] is not None:
+                    validated_item[field] = product_data[field]
+            
+            # Get current cart
+            cart = Cart.get_cart()
+            
+            # Check if item already exists in cart
+            existing_item = next((item for item in cart if str(item.get('product_id')) == product_id), None)
+            
+            if existing_item:
+                # Update existing item quantity and recalculate total
+                existing_item['quantity'] += quantity
+                existing_item['total'] = existing_item['unit_price'] * existing_item['quantity']
+            else:
+                # Add new item to cart
+                cart.append(validated_item)
+            
+            # Mark session as modified
+            session.modified = True
+            return True
+            
+        except Exception as e:
+            print(f"Error adding item to cart: {str(e)}")
+            return False
+    
+    @staticmethod
+    def remove_item(product_id: str) -> bool:
+        """Remove an item from the cart by product_id"""
+        try:
+            cart = Cart.get_cart()
+            product_id = str(product_id)
+            
+            # Find the item in the cart
+            for i, item in enumerate(cart):
+                if str(item.get('product_id')) == product_id:
+                    del cart[i]
+                    session.modified = True
+                    return True
+            
+            return False
+        except Exception as e:
+            print(f"Error removing item from cart: {str(e)}")
+            return False
+    
+    @staticmethod
+    def clear_cart() -> None:
+        """Clear all items from the cart"""
+        session[Cart.CART_SESSION_KEY] = []
+        session.modified = True
+    
+    @staticmethod
+    def get_total() -> float:
+        """Calculate the total amount for all items in the cart"""
+        try:
+            cart = Cart.get_cart()
+            return sum(float(item.get('total', 0)) for item in cart)
+        except Exception:
+            return 0.0

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="m-0">
+                        {% if form.product_id.data %}
+                        <i class="fas fa-edit me-2"></i>Edit Product
+                        {% else %}
+                        <i class="fas fa-plus-circle me-2"></i>New Product
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="product_id" class="form-label">{{ form.product_id.label }}</label>
+                                {{ form.product_id(class="form-control", placeholder="Enter product ID") }}
+                                {% for error in form.product_id.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">{{ form.name.label }}</label>
+                                {{ form.name(class="form-control", placeholder="Enter product name") }}
+                                {% for error in form.name.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="price" class="form-label">{{ form.price.label }}</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.price(class="form-control", placeholder="0.00") }}
+                                </div>
+                                {% for error in form.price.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="stock_quantity" class="form-label">{{ form.stock_quantity.label }}</label>
+                                {{ form.stock_quantity(class="form-control", placeholder="0") }}
+                                {% for error in form.stock_quantity.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="warranty" class="form-label">{{ form.warranty.label }}</label>
+                                {{ form.warranty(class="form-control", placeholder="Enter warranty in years") }}
+                                {% for error in form.warranty.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="manufacturer" class="form-label">{{ form.manufacturer.label }}</label>
+                                {{ form.manufacturer(class="form-control", placeholder="Enter manufacturer") }}
+                                {% for error in form.manufacturer.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="category" class="form-label">{{ form.category.label }}</label>
+                                {{ form.category(class="form-control", placeholder="Enter category") }}
+                                {% for error in form.category.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="subcategory" class="form-label">{{ form.subcategory.label }}</label>
+                                {{ form.subcategory(class="form-control", placeholder="Enter subcategory") }}
+                                {% for error in form.subcategory.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="material" class="form-label">{{ form.material.label }}</label>
+                                {{ form.material(class="form-control", placeholder="Enter material") }}
+                                {% for error in form.material.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="dimensions" class="form-label">{{ form.dimensions.label }}</label>
+                                {{ form.dimensions(class="form-control", placeholder="Enter dimensions") }}
+                                {% for error in form.dimensions.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">{{ form.description.label }}</label>
+                            {{ form.description(class="form-control", rows=4, placeholder="Enter product description") }}
+                            {% for error in form.description.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('products') }}" class="btn btn-secondary">Cancel</a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

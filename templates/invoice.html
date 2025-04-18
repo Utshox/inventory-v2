@@ -4,8 +4,12 @@
 <div class="row">
     <div class="col-12">
         <div class="card shadow">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h3 class="m-0"><i class="fas fa-shopping-cart me-2"></i>Shopping Cart</h3>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="enableComparison">
+                    <label class="form-check-label text-white" for="enableComparison">Enable Comparison Mode</label>
+                </div>
             </div>
             <div class="card-body">
                 {% if invoice_items %}
@@ -13,20 +17,36 @@
                     <table class="table table-striped">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Product</th>
-                                <th>Price</th>
-                                <th>Quantity</th>
-                                <th>Total</th>
-                                <th>Details</th>
-                                <th>Actions</th>
+                                <th style="width: 5%;">ID</th>
+                                <th style="width: 20%;">Product</th>
+                                <th style="width: 10%;">Price</th>
+                                <th style="width: 15%;">Quantity</th>
+                                <th style="width: 10%;">Total</th>
+                                <th style="width: 20%;">Alternatives</th>
+                                <th style="width: 10%;">Details</th>
+                                <th style="width: 10%;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for item in invoice_items %}
                             <tr>
-                                <td>{{ item.product_id }}</td>
-                                <td>{{ item.product_name }}</td>
+                                <td class="compare-item" data-id="{{ item.product_id }}">
+                                    <div class="d-flex align-items-center">
+                                        <div class="comparison-checkbox me-1" style="display: none;">
+                                            <input type="checkbox" class="form-check-input compare-check" data-id="{{ item.product_id }}">
+                                        </div>
+                                        {{ item.product_id }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong>{{ item.product_name }}</strong>
+                                    {% if item.category or item.subcategory %}
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ item.category }}{% if item.subcategory %} > {{ item.subcategory }}{% endif %}
+                                    </small>
+                                    {% endif %}
+                                </td>
                                 <td>${{ "%.2f"|format(item.unit_price|float) }}</td>
                                 <td>
                                     <form action="{{ url_for('update_quantity') }}" method="POST" class="d-flex align-items-center">
@@ -38,6 +58,16 @@
                                     </form>
                                 </td>
                                 <td>${{ "%.2f"|format(item.total|float) }}</td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownAlternatives{{ item.product_id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-exchange-alt"></i> Alternatives
+                                        </button>
+                                        <ul class="dropdown-menu alternatives-dropdown" aria-labelledby="dropdownAlternatives{{ item.product_id }}" data-product-id="{{ item.product_id }}">
+                                            <li><h6 class="dropdown-header">Loading alternatives...</h6></li>
+                                        </ul>
+                                    </div>
+                                </td>
                                 <td>
                                     <button class="btn btn-sm btn-info" type="button" 
                                             data-bs-toggle="collapse" 
@@ -53,44 +83,103 @@
                                 </td>
                             </tr>
                             <tr class="collapse" id="details-{{ item.product_id }}">
-                                <td colspan="7">
+                                <td colspan="8">
                                     <div class="card card-body bg-light">
                                         <div class="row">
-                                            {% if item.dimensions %}
-                                            <div class="col-md-4">
-                                                <strong>Dimensions:</strong> {{ item.dimensions }}
+                                            <div class="col-md-6">
+                                                <div class="product-specs mb-3">
+                                                    <h6 class="border-bottom pb-2 mb-3">Product Specifications</h6>
+                                                    <div class="row g-3">
+                                                        {% if item.manufacturer %}
+                                                        <div class="col-md-6">
+                                                            <div class="spec-item">
+                                                                <span class="spec-label">Manufacturer</span>
+                                                                <span class="spec-value">{{ item.manufacturer }}</span>
+                                                            </div>
+                                                        </div>
+                                                        {% endif %}
+                                                        
+                                                        {% if item.material %}
+                                                        <div class="col-md-6">
+                                                            <div class="spec-item">
+                                                                <span class="spec-label">Material</span>
+                                                                <span class="spec-value">{{ item.material }}</span>
+                                                            </div>
+                                                        </div>
+                                                        {% endif %}
+                                                        
+                                                        {% if item.dimensions %}
+                                                        <div class="col-md-6">
+                                                            <div class="spec-item">
+                                                                <span class="spec-label">Dimensions</span>
+                                                                <span class="spec-value">{{ item.dimensions }}</span>
+                                                            </div>
+                                                        </div>
+                                                        {% endif %}
+                                                        
+                                                        {% if item.warranty %}
+                                                        <div class="col-md-6">
+                                                            <div class="spec-item">
+                                                                <span class="spec-label">Warranty</span>
+                                                                <span class="spec-value">{{ item.warranty }} years</span>
+                                                            </div>
+                                                        </div>
+                                                        {% endif %}
+                                                        
+                                                        {% if item.weight %}
+                                                        <div class="col-md-6">
+                                                            <div class="spec-item">
+                                                                <span class="spec-label">Weight</span>
+                                                                <span class="spec-value">{{ item.weight }}</span>
+                                                            </div>
+                                                        </div>
+                                                        {% endif %}
+                                                        
+                                                        {% if item.color %}
+                                                        <div class="col-md-6">
+                                                            <div class="spec-item">
+                                                                <span class="spec-label">Color</span>
+                                                                <span class="spec-value">{{ item.color }}</span>
+                                                            </div>
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {% endif %}
                                             
-                                            {% if item.manufacturer %}
-                                            <div class="col-md-4">
-                                                <strong>Manufacturer:</strong> {{ item.manufacturer }}
+                                            <div class="col-md-6">
+                                                <div class="inventory-info mb-3">
+                                                    <h6 class="border-bottom pb-2 mb-3">Inventory Information</h6>
+                                                    <div class="row g-3">
+                                                        <div class="col-md-6">
+                                                            <div class="spec-item">
+                                                                <span class="spec-label">Stock Status</span>
+                                                                <span class="spec-value stock-status" data-product-id="{{ item.product_id }}">
+                                                                    <span class="spinner-border spinner-border-sm" role="status"></span> Checking...
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="col-md-6">
+                                                            <div class="spec-item">
+                                                                <span class="spec-label">Location</span>
+                                                                <span class="spec-value stock-location" data-product-id="{{ item.product_id }}">
+                                                                    <span class="spinner-border spinner-border-sm" role="status"></span> Checking...
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="col-md-12">
+                                                            <div class="spec-item">
+                                                                <span class="spec-label">Suggested Alternatives</span>
+                                                                <span class="spec-value alternatives-count" data-product-id="{{ item.product_id }}">
+                                                                    <span class="spinner-border spinner-border-sm" role="status"></span> Checking...
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {% endif %}
-                                            
-                                            {% if item.material %}
-                                            <div class="col-md-4">
-                                                <strong>Material:</strong> {{ item.material }}
-                                            </div>
-                                            {% endif %}
-                                            
-                                            {% if item.category %}
-                                            <div class="col-md-4">
-                                                <strong>Category:</strong> {{ item.category }}
-                                            </div>
-                                            {% endif %}
-                                            
-                                            {% if item.subcategory %}
-                                            <div class="col-md-4">
-                                                <strong>Subcategory:</strong> {{ item.subcategory }}
-                                            </div>
-                                            {% endif %}
-                                            
-                                            {% if item.warranty %}
-                                            <div class="col-md-4">
-                                                <strong>Warranty:</strong> {{ item.warranty }} years
-                                            </div>
-                                            {% endif %}
                                         </div>
                                     </div>
                                 </td>
@@ -101,27 +190,444 @@
                             <tr>
                                 <td colspan="4" class="text-end fw-bold">Grand Total:</td>
                                 <td>${{ "%.2f"|format(grand_total|float) }}</td>
-                                <td colspan="2"></td>
+                                <td colspan="3"></td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
                 
-                <div class="d-flex justify-content-between mt-3">
-                    <a href="{{ url_for('clear_cart') }}" class="btn btn-warning">
-                        <i class="fas fa-trash me-2"></i>Clear Cart
-                    </a>
-                    <a href="{{ url_for('customer_details') }}" class="btn btn-success">
-                        <i class="fas fa-file-invoice me-2"></i>Proceed to Checkout
-                    </a>
+                <!-- Product Comparison Section -->
+                <div id="comparisonSection" class="mt-4" style="display: none;">
+                    <div class="card shadow">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="m-0"><i class="fas fa-balance-scale me-2"></i>Product Comparison</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="comparisonTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Feature</th>
+                                            <!-- Product columns will be added dynamically -->
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <th>Product Name</th>
+                                            <!-- Data will be added dynamically -->
+                                        </tr>
+                                        <tr>
+                                            <th>Price</th>
+                                            <!-- Data will be added dynamically -->
+                                        </tr>
+                                        <tr>
+                                            <th>Manufacturer</th>
+                                            <!-- Data will be added dynamically -->
+                                        </tr>
+                                        <tr>
+                                            <th>Material</th>
+                                            <!-- Data will be added dynamically -->
+                                        </tr>
+                                        <tr>
+                                            <th>Dimensions</th>
+                                            <!-- Data will be added dynamically -->
+                                        </tr>
+                                        <tr>
+                                            <th>Warranty</th>
+                                            <!-- Data will be added dynamically -->
+                                        </tr>
+                                        <tr>
+                                            <th>Category</th>
+                                            <!-- Data will be added dynamically -->
+                                        </tr>
+                                        <tr>
+                                            <th>Stock</th>
+                                            <!-- Data will be added dynamically -->
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('clear_cart') }}" class="btn btn-outline-danger">
+                        <i class="fas fa-trash-alt me-2"></i>Clear Cart
+                    </a>
+                    <div>
+                        <a href="{{ url_for('show_results') }}" class="btn btn-primary me-2">
+                            <i class="fas fa-shopping-basket me-2"></i>Continue Shopping
+                        </a>
+                        <a href="{{ url_for('customer_details') }}" class="btn btn-success">
+                            <i class="fas fa-check-circle me-2"></i>Proceed to Checkout
+                        </a>
+                    </div>
+                </div>
+                
                 {% else %}
                 <div class="alert alert-info">
-                    <p>Your cart is empty. Return to the <a href="{{ url_for('show_results') }}">results</a> to add items.</p>
+                    <i class="fas fa-info-circle me-2"></i>Your cart is empty.
+                    <a href="{{ url_for('show_results') }}" class="alert-link">Go shopping</a>
                 </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<!-- Add JavaScript for enhanced cart functionality -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Product Alternative Handling
+    const alternativeDropdowns = document.querySelectorAll('.alternatives-dropdown');
+    alternativeDropdowns.forEach(dropdown => {
+        // Use mouseover instead of show.bs.dropdown to preload alternatives
+        dropdown.closest('.dropdown').addEventListener('mouseover', function(e) {
+            const productId = dropdown.getAttribute('data-product-id');
+            if (!dropdown.classList.contains('loaded')) {
+                dropdown.classList.add('loaded');
+                loadAlternatives(productId, dropdown);
+            }
+        });
+    });
+
+    // Function to load product alternatives
+    function loadAlternatives(productId, dropdownElement) {
+        // Clear existing items
+        dropdownElement.innerHTML = '<li><h6 class="dropdown-header">Loading alternatives...</h6></li>';
+        
+        // Fetch alternatives from the server
+        fetch(`/get_alternative_products/${productId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                dropdownElement.innerHTML = '';
+                
+                if (data.alternatives && data.alternatives.length > 0) {
+                    data.alternatives.forEach(alt => {
+                        const li = document.createElement('li');
+                        const a = document.createElement('a');
+                        a.classList.add('dropdown-item');
+                        a.href = '#';
+                        a.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${alt.name}</strong>
+                                    <br>
+                                    <small class="text-muted">${alt.manufacturer || 'Unknown'}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-primary">$${parseFloat(alt.price).toFixed(2)}</span>
+                                </div>
+                            </div>
+                        `;
+                        a.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            swapProduct(productId, alt.product_id);
+                        });
+                        li.appendChild(a);
+                        dropdownElement.appendChild(li);
+                    });
+                } else {
+                    dropdownElement.innerHTML = '<li><h6 class="dropdown-header">No alternatives found</h6></li>';
+                }
+
+                // Update alternative count in details panel
+                const alternativesCountEl = document.querySelector(`.alternatives-count[data-product-id="${productId}"]`);
+                if (alternativesCountEl) {
+                    const count = data.alternatives ? data.alternatives.length : 0;
+                    if (count > 0) {
+                        alternativesCountEl.innerHTML = `<span class="badge bg-info">${count} available</span>`;
+                    } else {
+                        alternativesCountEl.textContent = 'None available';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching alternatives:', error);
+                dropdownElement.innerHTML = '<li><h6 class="dropdown-header">Error loading alternatives</h6></li>';
+            });
+    }
+
+    // Function to swap a product with an alternative
+    function swapProduct(oldProductId, newProductId) {
+        fetch(`/swap_product/${oldProductId}/${newProductId}`, {
+            method: 'POST'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Network response was not ok: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Reload the page to reflect changes
+                window.location.reload();
+            } else {
+                alert('Failed to swap product: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error swapping product:', error);
+            alert('An error occurred while trying to swap products. Please try again.');
+        });
+    }
+
+    // Load inventory information for each product
+    function loadInventoryInfo() {
+        const stockStatusElements = document.querySelectorAll('.stock-status');
+        const stockLocationElements = document.querySelectorAll('.stock-location');
+        
+        stockStatusElements.forEach(element => {
+            const productId = element.getAttribute('data-product-id');
+            fetch(`/get_product_stock/${productId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.stock > 10) {
+                        element.innerHTML = `<span class="badge bg-success">In Stock (${data.stock})</span>`;
+                    } else if (data.stock > 0) {
+                        element.innerHTML = `<span class="badge bg-warning">Low Stock (${data.stock})</span>`;
+                    } else {
+                        element.innerHTML = `<span class="badge bg-danger">Out of Stock</span>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching stock:', error);
+                    element.textContent = 'Unknown';
+                });
+        });
+        
+        stockLocationElements.forEach(element => {
+            const productId = element.getAttribute('data-product-id');
+            fetch(`/get_product_location/${productId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    element.textContent = data.location || 'Not specified';
+                })
+                .catch(error => {
+                    console.error('Error fetching location:', error);
+                    element.textContent = 'Unknown';
+                });
+        });
+    }
+    
+    // Load inventory information when the page loads
+    loadInventoryInfo();
+    
+    // Comparison Mode Toggle
+    const comparisonToggle = document.getElementById('enableComparison');
+    const comparisonCheckboxes = document.querySelectorAll('.comparison-checkbox');
+    const comparisonSection = document.getElementById('comparisonSection');
+    
+    comparisonToggle.addEventListener('change', function() {
+        if (this.checked) {
+            // Enable comparison mode
+            comparisonCheckboxes.forEach(cb => {
+                cb.style.display = 'block';
+            });
+            comparisonSection.style.display = 'block';
+        } else {
+            // Disable comparison mode
+            comparisonCheckboxes.forEach(cb => {
+                cb.style.display = 'none';
+                const checkbox = cb.querySelector('input');
+                if (checkbox) checkbox.checked = false;
+            });
+            comparisonSection.style.display = 'none';
+            // Clear comparison table
+            updateComparisonTable([]);
+        }
+    });
+    
+    // Handle comparison checkbox clicks
+    document.querySelectorAll('.compare-check').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // Get all checked products
+            const checkedProducts = Array.from(document.querySelectorAll('.compare-check:checked'))
+                .map(cb => cb.getAttribute('data-id'));
+            
+            if (checkedProducts.length > 4) {
+                alert('You can compare up to 4 products at a time.');
+                this.checked = false;
+                return;
+            }
+            
+            // Update comparison table
+            updateComparisonTable(checkedProducts);
+        });
+    });
+    
+    // Function to update the comparison table
+    function updateComparisonTable(productIds) {
+        if (productIds.length === 0) {
+            // Clear comparison table
+            document.querySelector('#comparisonTable thead tr').innerHTML = '<th>Feature</th>';
+            document.querySelectorAll('#comparisonTable tbody tr').forEach(row => {
+                row.innerHTML = row.querySelector('th').outerHTML;
+            });
+            return;
+        }
+        
+        // Show loading state
+        document.querySelector('#comparisonTable thead tr').innerHTML = '<th>Feature</th>';
+        productIds.forEach(() => {
+            document.querySelector('#comparisonTable thead tr').innerHTML += '<th><div class="spinner-border spinner-border-sm" role="status"></div> Loading...</th>';
+        });
+        
+        // Fetch product data for comparison with proper error handling
+        Promise.all(productIds.map(id => 
+            fetch(`/get_product_details/${id}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .catch(error => {
+                    console.error(`Error fetching product details for ID ${id}:`, error);
+                    return {
+                        product_id: id,
+                        product_name: 'Error loading product',
+                        price: 0,
+                        manufacturer: 'Error',
+                        material: 'Error',
+                        dimensions: 'Error',
+                        warranty: 'Error',
+                        category: 'Error',
+                        subcategory: 'Error',
+                        stock: 'Error'
+                    };
+                })
+        ))
+        .then(products => {
+            // Update table header
+            let headerHTML = '<th>Feature</th>';
+            products.forEach(product => {
+                headerHTML += `<th>${product.product_name || 'Unknown'}</th>`;
+            });
+            document.querySelector('#comparisonTable thead tr').innerHTML = headerHTML;
+            
+            // Update table rows
+            const rows = document.querySelectorAll('#comparisonTable tbody tr');
+            
+            // Product Name row
+            rows[0].innerHTML = '<th>Product Name</th>';
+            products.forEach(product => {
+                rows[0].innerHTML += `<td>${product.product_name || 'Unknown'}</td>`;
+            });
+            
+            // Price row
+            rows[1].innerHTML = '<th>Price</th>';
+            products.forEach(product => {
+                const price = (typeof product.price === 'number') ? product.price : 0;
+                rows[1].innerHTML += `<td>$${parseFloat(price).toFixed(2)}</td>`;
+            });
+            
+            // Manufacturer row
+            rows[2].innerHTML = '<th>Manufacturer</th>';
+            products.forEach(product => {
+                rows[2].innerHTML += `<td>${product.manufacturer || 'N/A'}</td>`;
+            });
+            
+            // Material row
+            rows[3].innerHTML = '<th>Material</th>';
+            products.forEach(product => {
+                rows[3].innerHTML += `<td>${product.material || 'N/A'}</td>`;
+            });
+            
+            // Dimensions row
+            rows[4].innerHTML = '<th>Dimensions</th>';
+            products.forEach(product => {
+                rows[4].innerHTML += `<td>${product.dimensions || 'N/A'}</td>`;
+            });
+            
+            // Warranty row
+            rows[5].innerHTML = '<th>Warranty</th>';
+            products.forEach(product => {
+                rows[5].innerHTML += `<td>${product.warranty ? product.warranty + ' years' : 'N/A'}</td>`;
+            });
+            
+            // Category row
+            rows[6].innerHTML = '<th>Category</th>';
+            products.forEach(product => {
+                rows[6].innerHTML += `<td>${product.category || 'N/A'}</td>`;
+            });
+            
+            // Stock row
+            rows[7].innerHTML = '<th>Stock</th>';
+            products.forEach(product => {
+                rows[7].innerHTML += `<td>${product.stock || 'N/A'}</td>`;
+            });
+        })
+        .catch(error => {
+            console.error('Error updating comparison table:', error);
+            alert('An error occurred while comparing products. Please try again.');
+        });
+    }
+});
+</script>
+
+<!-- Add custom styles -->
+<style>
+.spec-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.5rem;
+}
+
+.spec-label {
+    font-weight: 500;
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+.spec-value {
+    font-size: 0.95rem;
+}
+
+.dropdown-item {
+    white-space: normal;
+    min-width: 250px;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.alternatives-dropdown {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+#comparisonTable th:first-child {
+    width: 120px;
+    background-color: #f8f9fa;
+}
+
+#comparisonTable td {
+    vertical-align: middle;
+}
+
+.comparison-checkbox {
+    margin-right: 5px;
+}
+</style>
 {% endblock %}

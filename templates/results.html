@@ -23,7 +23,13 @@
         <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
             <h5><i class="fas fa-table me-2"></i>Product Results</h5>
             <div>
-                <a href="{{ url_for('download_invoice') }}" class="btn btn-light">
+                <a href="{{ url_for('view_cart') }}" class="btn btn-light">
+                    <i class="fas fa-shopping-cart me-2"></i>View Cart
+                    {% if session.get('invoice_items') %}
+                    <span class="badge bg-danger">{{ session.get('invoice_items')|length }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('download_invoice') }}" class="btn btn-light ms-2">
                     <i class="fas fa-file-invoice me-2"></i>Download Invoice
                 </a>
             </div>
@@ -48,9 +54,9 @@
                                 {% if key == 'Image URL' %}
                                     <img src="{{ value }}" alt="Product Image" class="img-thumbnail" style="max-width: 100px;">
                                 {% elif key in ['Unit Price', 'Price'] %}
-                                    ${{ "%.2f"|format(value|float) }}
+                                    ${{ "%.2f"|format(value|float) if value and value|string != 'nan' else "0.00" }}
                                 {% elif key == 'Warranty Information' %}
-                                    {{ value|int }} years
+                                    {{ value|int if value and value|string != 'nan' else "0" }} years
                                 {% elif key == 'Size/Dimensions' %}
                                     <code>{{ value }}</code>
                                 {% else %}
@@ -59,12 +65,12 @@
                             </td>
                             {% endfor %}
                             <td class="text-end">
-                                <button class="btn btn-warning btn-sm" 
+                                <button class="btn btn-warning btn-sm add-to-invoice-btn" 
                                         data-bs-toggle="modal" 
                                         data-bs-target="#invoiceModal"
-                                        data-product-id="{{ row['Product ID'] }}"
-                                        data-product-name="{{ row['Product Name'] }}"
-                                        data-unit-price="{{ row['Unit Price'] }}">
+                                        data-product-id="{{ row.get('Product ID') or row.get('ProductID') or row.get('product_id') or row.get('ID') or row.get('SKU') or row.get('id') or loop.index }}"
+                                        data-product-name="{{ row.get('Product Name') or row.get('ProductName') or row.get('product_name') or row.get('Name') or row.get('Description') or row.get('name') or 'Product ' ~ loop.index }}"
+                                        data-unit-price="{{ (row.get('Unit Price') or row.get('UnitPrice') or row.get('unit_price') or row.get('Price') or row.get('price') or '0.00') | string | replace('$', '') | replace(',', '') | replace('nan', '0.00') }}">
                                     <i class="fas fa-cart-plus me-2"></i>Add
                                 </button>
                             </td>
@@ -90,7 +96,7 @@
                     <h5 class="modal-title" id="invoiceModalLabel">Add to Invoice</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ url_for('generate_invoice') }}" method="POST">
+                <form action="{{ url_for('generate_invoice') }}" method="POST" id="invoiceForm">
                     <div class="modal-body">
                         <input type="hidden" id="product_id" name="product_id">
                         <input type="hidden" id="product_name" name="product_name">
@@ -105,7 +111,7 @@
                             <label for="price_display" class="form-label">Unit Price:</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
-                                <input type="text" class="form-control" id="price_display" readonly>
+                                <input type="number" class="form-control" id="price_display" step="0.01" min="0">
                             </div>
                         </div>
                         
@@ -137,6 +143,32 @@
 document.addEventListener('DOMContentLoaded', function() {
     const invoiceModal = document.getElementById('invoiceModal');
     if (invoiceModal) {
+        // Store references to frequently accessed elements
+        const productIdInput = document.getElementById('product_id');
+        const productNameInput = document.getElementById('product_name');
+        const unitPriceInput = document.getElementById('unit_price');
+        const priceDisplayInput = document.getElementById('price_display');
+        const selectedProductInput = document.getElementById('selected_product');
+        const quantityInput = document.getElementById('quantity');
+        const totalInput = document.getElementById('total');
+        
+        // Function to update the total price
+        function updateTotal() {
+            const qty = parseInt(quantityInput.value) || 1;
+            const price = parseFloat(priceDisplayInput.value) || 0;
+            totalInput.value = (price * qty).toFixed(2);
+            
+            // Also update the hidden unit price input
+            unitPriceInput.value = priceDisplayInput.value;
+        }
+        
+        // Add event listener to the price display input to update total when price changes
+        priceDisplayInput.addEventListener('input', updateTotal);
+        
+        // Add event listener to the quantity input to update total when quantity changes
+        quantityInput.addEventListener('input', updateTotal);
+        
+        // Modal show event
         invoiceModal.addEventListener('show.bs.modal', function (event) {
             // Button that triggered the modal
             const button = event.relatedTarget;
@@ -144,25 +176,95 @@ document.addEventListener('DOMContentLoaded', function() {
             // Extract info from data attributes
             const productId = button.getAttribute('data-product-id');
             const productName = button.getAttribute('data-product-name');
-            const unitPrice = parseFloat(button.getAttribute('data-unit-price'));
             
-            // Update modal content
-            const modal = this;
-            modal.querySelector('#product_id').value = productId;
-            modal.querySelector('#product_name').value = productName;
-            modal.querySelector('#unit_price').value = unitPrice;
-            modal.querySelector('#selected_product').value = `${productId} - ${productName}`;
-            modal.querySelector('#price_display').value = unitPrice.toFixed(2);
+            // Fix the NaN issue by properly validating the unit price
+            const unitPriceAttr = button.getAttribute('data-unit-price');
+            let unitPrice = 0;
+            
+            // Only attempt to parse if it's a valid number string
+            if (unitPriceAttr && 
+                unitPriceAttr.toLowerCase() !== 'nan' && 
+                unitPriceAttr.toLowerCase() !== 'none' && 
+                unitPriceAttr.toLowerCase() !== 'undefined') {
+                unitPrice = parseFloat(unitPriceAttr);
+                // Additional check to ensure we don't have NaN after parsing
+                if (isNaN(unitPrice)) {
+                    unitPrice = 0;
+                }
+            }
+            
+            console.log("Adding product:", productId, productName, "Price:", unitPrice); // Debug info
+            
+            // Update modal form fields
+            productIdInput.value = productId || '';
+            productNameInput.value = productName || '';
+            unitPriceInput.value = unitPrice.toFixed(2);
+            priceDisplayInput.value = unitPrice.toFixed(2);
+            selectedProductInput.value = `${productId} - ${productName}`;
+            quantityInput.value = 1;
             
             // Set initial total
-            const quantity = parseInt(modal.querySelector('#quantity').value);
-            modal.querySelector('#total').value = (unitPrice * quantity).toFixed(2);
+            updateTotal();
+        });
+        
+        // Reset form when modal is hidden
+        invoiceModal.addEventListener('hidden.bs.modal', function() {
+            quantityInput.value = 1;
+        });
+        
+        // Form submission handler with improved validation
+        const form = document.getElementById('invoiceForm');
+        form.addEventListener('submit', function(event) {
+            // Update the hidden unit price input with the current display value before submit
+            unitPriceInput.value = priceDisplayInput.value;
             
-            // Update total when quantity changes
-            modal.querySelector('#quantity').addEventListener('input', function() {
-                const qty = parseInt(this.value) || 0;
-                modal.querySelector('#total').value = (unitPrice * qty).toFixed(2);
+            // Get values from form
+            const productId = productIdInput.value;
+            const productName = productNameInput.value;
+            const unitPrice = parseFloat(unitPriceInput.value) || 0;
+            const quantity = parseInt(quantityInput.value) || 1;
+            
+            console.log('Form Validation - Product ID:', productId);
+            console.log('Form Validation - Product Name:', productName);
+            console.log('Form Validation - Unit Price:', unitPrice);
+            console.log('Form Validation - Quantity:', quantity);
+            
+            // Check if at least one of product ID or name is available
+            if ((!productId || productId === 'undefined' || productId === 'null' || productId === '') && 
+                (!productName || productName === 'undefined' || productName === 'null' || productName === '')) {
+                event.preventDefault();
+                console.error('Product validation failed - ID:', productId, 'Name:', productName);
+                alert('Product information is missing. Please try again.');
+                return false;
+            }
+            
+            // If product ID is missing but name exists, use a fallback ID
+            if (!productId || productId === 'undefined' || productId === 'null' || productId === '') {
+                // Create a simple hash from the product name as a fallback ID
+                productIdInput.value = 'PROD-' + Math.abs(productName.split('').reduce(
+                    (hash, char) => (hash << 5) - hash + char.charCodeAt(0), 0
+                )).toString(36).substring(0, 6).toUpperCase();
+                console.log('Generated fallback ID:', productIdInput.value);
+            }
+            
+            // Ensure quantity is positive
+            if (quantity <= 0) {
+                event.preventDefault();
+                alert('Quantity must be at least 1');
+                quantityInput.value = 1;
+                return false;
+            }
+            
+            // Log form submission for debugging
+            console.log('Submitting form with data:', {
+                productId: productIdInput.value,
+                productName,
+                unitPrice: unitPrice.toFixed(2),
+                quantity
             });
+            
+            // Allow form submission
+            return true;
         });
     }
 });

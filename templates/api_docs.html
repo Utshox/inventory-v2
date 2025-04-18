@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h2 class="m-0"><i class="fas fa-code me-2"></i>API Documentation</h2>
+        </div>
+        <div class="card-body">
+            <h3 class="mb-3">Overview</h3>
+            <p>
+                This API provides programmatic access to inventory data. All API endpoints require an API key passed in 
+                the <code>X-API-Key</code> header.
+            </p>
+            <p>
+                <strong>Base URL:</strong> <code>{{ request.url_root }}api/v1</code>
+            </p>
+
+            <h3 class="mt-4 mb-3">Authentication</h3>
+            <p>
+                All API requests require authentication using an API key. You can generate API keys from the 
+                <a href="{{ url_for('api_keys') }}">API Keys</a> page.
+            </p>
+            <p>
+                <strong>Example:</strong>
+            </p>
+            <pre><code>curl -H "X-API-Key: your_api_key" {{ request.url_root }}api/v1/products</code></pre>
+
+            <h3 class="mt-4 mb-3">Endpoints</h3>
+
+            <!-- Products -->
+            <div class="endpoint-group mb-4">
+                <h4><i class="fas fa-box me-2"></i>Products</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-success">GET</span></td>
+                                <td><code>/api/v1/products</code></td>
+                                <td>List all products (with pagination)</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-success">GET</span></td>
+                                <td><code>/api/v1/products/{product_id}</code></td>
+                                <td>Get a specific product by ID</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-primary">POST</span></td>
+                                <td><code>/api/v1/products</code></td>
+                                <td>Create a new product</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">PUT</span></td>
+                                <td><code>/api/v1/products/{product_id}</code></td>
+                                <td>Update a product (full update)</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-info text-dark">PATCH</span></td>
+                                <td><code>/api/v1/products/{product_id}</code></td>
+                                <td>Partially update a product</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">DELETE</span></td>
+                                <td><code>/api/v1/products/{product_id}</code></td>
+                                <td>Delete a product</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="accordion mt-3" id="productsAccordion">
+                    <!-- GET Products -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingGetProducts">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGetProducts" aria-expanded="false" aria-controls="collapseGetProducts">
+                                <span class="badge bg-success me-2">GET</span> /api/v1/products
+                            </button>
+                        </h2>
+                        <div id="collapseGetProducts" class="accordion-collapse collapse" aria-labelledby="headingGetProducts" data-bs-parent="#productsAccordion">
+                            <div class="accordion-body">
+                                <h5>Parameters</h5>
+                                <ul>
+                                    <li><code>page</code> - Page number (default: 1)</li>
+                                    <li><code>per_page</code> - Items per page (default: 20, max: 100)</li>
+                                    <li><code>category</code> - Filter by category</li>
+                                    <li><code>manufacturer</code> - Filter by manufacturer</li>
+                                    <li><code>min_price</code> - Minimum price</li>
+                                    <li><code>max_price</code> - Maximum price</li>
+                                </ul>
+                                <h5>Example Response</h5>
+                                <pre><code>{
+  "items": [
+    {
+      "id": 1,
+      "product_id": "DOOR-001",
+      "name": "Steel Security Door",
+      "price": 399.99,
+      "manufacturer": "SecureDoor Inc",
+      "category": "Security Doors",
+      "stock_quantity": 15,
+      ...
+    },
+    ...
+  ],
+  "page": 1,
+  "pages": 5,
+  "total": 100,
+  "per_page": 20
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Create Product -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingCreateProduct">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCreateProduct" aria-expanded="false" aria-controls="collapseCreateProduct">
+                                <span class="badge bg-primary me-2">POST</span> /api/v1/products
+                            </button>
+                        </h2>
+                        <div id="collapseCreateProduct" class="accordion-collapse collapse" aria-labelledby="headingCreateProduct" data-bs-parent="#productsAccordion">
+                            <div class="accordion-body">
+                                <h5>Request Body</h5>
+                                <pre><code>{
+  "product_id": "DOOR-1001",
+  "name": "Premium Wooden Door",
+  "price": 299.99,
+  "manufacturer": "WoodCraft",
+  "category": "Wooden Doors",
+  "subcategory": "Interior",
+  "material": "Oak",
+  "dimensions": "36x80 inches",
+  "warranty": 2,
+  "description": "Premium oak interior door",
+  "stock_quantity": 10
+}</code></pre>
+                                <p><strong>Required fields:</strong> product_id, name, price</p>
+                                <h5>Example Response</h5>
+                                <pre><code>{
+  "message": "Product created successfully",
+  "product": {
+    "id": 101,
+    "product_id": "DOOR-1001",
+    "name": "Premium Wooden Door",
+    ...
+  }
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customers -->
+            <div class="endpoint-group mb-4">
+                <h4><i class="fas fa-users me-2"></i>Customers</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-success">GET</span></td>
+                                <td><code>/api/v1/customers</code></td>
+                                <td>List all customers (with pagination)</td>
+                            </tr>
+                            <!-- Add more customer endpoints here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Inventory -->
+            <div class="endpoint-group mb-4">
+                <h4><i class="fas fa-warehouse me-2"></i>Inventory</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-success">GET</span></td>
+                                <td><code>/api/v1/inventory/low-stock</code></td>
+                                <td>Get products with low stock</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-primary">POST</span></td>
+                                <td><code>/api/v1/inventory/update-stock</code></td>
+                                <td>Bulk update stock quantities</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="endpoint-group mb-4">
+                <h4><i class="fas fa-chart-bar me-2"></i>Statistics</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-success">GET</span></td>
+                                <td><code>/api/v1/categories</code></td>
+                                <td>Get all product categories with counts</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-success">GET</span></td>
+                                <td><code>/api/v1/stats</code></td>
+                                <td>Get system-wide statistics</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Error Codes -->
+            <h3 class="mt-4 mb-3">Error Codes</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Status Code</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>400</td>
+                            <td>Bad Request - Missing required parameters</td>
+                        </tr>
+                        <tr>
+                            <td>401</td>
+                            <td>Unauthorized - Invalid or missing API key</td>
+                        </tr>
+                        <tr>
+                            <td>404</td>
+                            <td>Not Found - The requested resource doesn't exist</td>
+                        </tr>
+                        <tr>
+                            <td>409</td>
+                            <td>Conflict - Resource already exists (e.g., duplicate product ID)</td>
+                        </tr>
+                        <tr>
+                            <td>500</td>
+                            <td>Internal Server Error - Something went wrong on the server</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

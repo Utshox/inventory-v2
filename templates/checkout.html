@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4"><i class="fas fa-receipt me-2"></i>Complete Your Order</h2>
+
+    <div class="row">
+        <!-- Order Summary -->
+        <div class="col-md-4 order-md-2 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="m-0"><i class="fas fa-shopping-cart me-2"></i>Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Qty</th>
+                                    <th class="text-end">Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in invoice_items %}
+                                <tr>
+                                    <td>{{ item.product_name }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td class="text-end">${{ "%.2f"|format(item.total|float) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="2" class="text-end">Subtotal:</th>
+                                    <td class="text-end">${{ "%.2f"|format(grand_total|float) }}</td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2" class="text-end">Tax (7%):</th>
+                                    <td class="text-end">${{ "%.2f"|format(grand_total * 0.07) }}</td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2" class="text-end">Total:</th>
+                                    <td class="text-end fw-bold">${{ "%.2f"|format(grand_total * 1.07) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('view_cart') }}" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-edit me-2"></i>Edit Cart
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Information Form -->
+        <div class="col-md-8 order-md-1">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="m-0"><i class="fas fa-user-circle me-2"></i>Customer Details</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('generate_final_invoice') }}" method="POST">
+                        <div class="mb-3">
+                            <label for="customer_name" class="form-label">Full Name *</label>
+                            <input type="text" class="form-control" id="customer_name" name="customer_name" required placeholder="Enter your full name">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="customer_email" class="form-label">Email Address *</label>
+                            <input type="email" class="form-control" id="customer_email" name="customer_email" required placeholder="Enter your email address">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="customer_phone" class="form-label">Phone Number *</label>
+                            <input type="tel" class="form-control" id="customer_phone" name="customer_phone" required placeholder="Enter your phone number">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="customer_address" class="form-label">Delivery Address *</label>
+                            <textarea class="form-control" id="customer_address" name="customer_address" rows="3" required placeholder="Enter your full address"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Order Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Any special instructions for this order"></textarea>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('view_cart') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Return to Cart
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-file-invoice-dollar me-2"></i>Generate Invoice
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
